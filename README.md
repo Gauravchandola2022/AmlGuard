@@ -160,7 +160,6 @@ uv run pytest tests/test_rules.py::test_large_dataset_processing -v
 - **Transaction Form**: Enter all transaction details
 - **Real-time Scoring**: Immediate rule engine scoring
 - **ML Prediction**: Model probability and feature importance
-- **RAG Chat**: Query chatbot for transaction explanation
 
 ### 4. Investigations / Export
 - **Advanced Filters**: Date range, country, score range, payment type
