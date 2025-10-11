@@ -1,2 +1,6 @@
 2025-10-11 09:09:39 | backend.database | INFO | database.py:87 | Database initialized successfully
 2025-10-11 09:09:40 | vectorstore.chroma_client | WARNING | chroma_client.py:52 | sentence-transformers not available - embeddings functionality disabled
+2025-10-11 10:21:02 | backend.database | INFO | database.py:87 | Database initialized successfully
+2025-10-11 10:21:05 | vectorstore.chroma_client | WARNING | chroma_client.py:52 | sentence-transformers not available - embeddings functionality disabled
+2025-10-11 10:21:11 | backend.database | INFO | database.py:87 | Database initialized successfully
+2025-10-11 10:21:14 | vectorstore.chroma_client | WARNING | chroma_client.py:52 | sentence-transformers not available - embeddings functionality disabled
