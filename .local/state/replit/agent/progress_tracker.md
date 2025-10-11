@@ -12,3 +12,7 @@
 [x] 12. Created structuring pattern chart showing transaction patterns over time
 [x] 13. Added top keywords visualization with frequency analysis
 [x] 14. Tested and verified all dashboard visualizations working correctly
+[x] 15. Updated Manual Transaction page: Changed "Total Score" to "Risk Score"
+[x] 16. Updated Manual Transaction page: Changed alert headers to "Suspicious Transaction" / "Non Suspicious Transaction"
+[x] 17. Updated Manual Transaction page: Changed ML predictions to "Suspicious" / "Non suspicious"
+[x] 18. Updated Manual Transaction page: Replaced SHAP features with rule-based Top Contributing Features showing the 5 AML rules

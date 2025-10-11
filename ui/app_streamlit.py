@@ -728,15 +728,15 @@ elif page == "✍️ Manual Transaction Entry":
                 if score_result['suspicious']:
                     st.markdown(f"""
                     <div class="suspicious-alert">
-                        <h4>🚨 SUSPICIOUS TRANSACTION DETECTED</h4>
-                        <p><strong>Total Score:</strong> {score_result['total_score']}</p>
+                        <h4>🚨 Suspicious Transaction</h4>
+                        <p><strong>Risk Score:</strong> {score_result['total_score']}</p>
                     </div>
                     """, unsafe_allow_html=True)
                 else:
                     st.markdown(f"""
                     <div class="safe-transaction">
-                        <h4>✅ Transaction appears normal</h4>
-                        <p><strong>Total Score:</strong> {score_result['total_score']}</p>
+                        <h4>✅ Non Suspicious Transaction</h4>
+                        <p><strong>Risk Score:</strong> {score_result['total_score']}</p>
                     </div>
                     """, unsafe_allow_html=True)
                 
@@ -781,21 +781,44 @@ elif page == "✍️ Manual Transaction Entry":
                         st.metric("Suspicion Probability", f"{probability:.2%}")
                         
                         if prediction:
-                            st.error("Prediction: SUSPICIOUS")
+                            st.error("Prediction: Suspicious")
                         else:
-                            st.success("Prediction: NORMAL")
+                            st.success("Prediction: Non suspicious")
                         
-                        # SHAP explanation
-                        try:
-                            shap_result = st.session_state.ml_model.explain_prediction(txn_df, 0)
+                        # Rule-based top contributing features
+                        st.subheader("📊 Top Contributing Features")
+                        
+                        if score_result['score_breakdown']:
+                            # Sort rules by score to show top contributors
+                            sorted_rules = sorted(score_result['score_breakdown'], key=lambda x: x['score'], reverse=True)
                             
-                            if shap_result.get('top_features'):
-                                st.subheader("📊 Top Contributing Features")
-                                for feature in shap_result['top_features'][:3]:
-                                    contribution = "🔴" if feature['contribution'] == 'positive' else "🟢"
-                                    st.write(f"{contribution} **{feature['feature']}**: {feature.get('value', 'N/A')}")
-                        except Exception as e:
-                            st.warning("SHAP explanation unavailable")
+                            for rule in sorted_rules[:5]:
+                                rule_name = rule['rule_name']
+                                score = rule['score']
+                                evidence = rule['evidence']
+                                
+                                # Determine emoji based on score impact
+                                if score >= 5:
+                                    emoji = "🔴"
+                                elif score >= 3:
+                                    emoji = "🟠"
+                                else:
+                                    emoji = "🟡"
+                                
+                                # Map rule names to user-friendly names
+                                friendly_names = {
+                                    'BeneficiaryHighRisk': 'High-Risk Country',
+                                    'SuspiciousKeyword': 'Suspicious Keyword',
+                                    'LargeAmount': 'Large Amount (>$1M)',
+                                    'Structuring': 'Structuring Pattern',
+                                    'RoundedAmount': 'Rounded Amount'
+                                }
+                                
+                                display_name = friendly_names.get(rule_name, rule_name)
+                                st.write(f"{emoji} **{display_name}** (+{score} points)")
+                                st.caption(f"   {evidence}")
+                        else:
+                            st.info("No risk factors detected - Transaction appears clean")
                     
                     except Exception as e:
                         st.warning("ML model prediction failed")

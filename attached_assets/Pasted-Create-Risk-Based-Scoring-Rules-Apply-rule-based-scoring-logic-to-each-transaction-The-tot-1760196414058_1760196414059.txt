@@ -1,0 +1,54 @@
+Create Risk-Based Scoring Rules 
+
+ 
+
+Apply rule-based scoring logic to each transaction. The total score will determine whether the transaction is suspicious. 
+
+ 
+
+Rule #1: Beneficiary country in high-risk list 
+
+Description: This rule checks if the beneficiary country of a transaction is in a high-risk list. 
+Default Risk Score: 
++ Level 1 (L1): 2 
++ Level 2 (L2): 4 
++ Level 3 (L3): 10 
+Logic: If the beneficiary country is in the high-risk list, the corresponding risk score is assigned to the transaction. 
+Example: 
++ If the beneficiary country is in L1, the risk score is 2. 
++ If the beneficiary country is in L2, the risk score is 4. 
++ If the beneficiary country is in L3, the risk score is 10. 
+Rule #2: Suspicious keyword found in payment_instruction 
+
+Description: This rule checks if a suspicious keyword is found in the payment instruction of a transaction. 
+Default Risk Score: 3 
+Logic: If a suspicious keyword is found in the payment instruction, the risk score of 3 is assigned to the transaction. 
+Example: 
++ If the payment instruction contains the word "gift", the risk score is 3. 
+Rule #3: Amount > $1 million (in USD equivalent) 
+
+Description: This rule checks if the transaction amount is greater than $1 million in USD equivalent. 
+Default Risk Score: 3 
+Logic: If the transaction amount is greater than $1 million, the risk score of 3 is assigned to the transaction. 
+Example: 
++ If the transaction amount is $1,500,000, the risk score is 3. 
+Rule #4: Structuring (3-day sum of 8,000–9,999 range > $1M) 
+
+Description: This rule checks if the 3-day sum of transactions in the range of $8,000 to $9,999 is greater than $1 million. 
+Default Risk Score: 5 
+Logic: If the 3-day sum of transactions in the specified range is greater than $1 million, the risk score of 5 is assigned to the transaction. 
+Example: 
++ If the 3-day sum of transactions in the range of $8,000 to $9,999 is $1,200,000, the risk score is 5. 
+Rule #5: Rounded Amounts (e.g., 1000000, 750000, 500000) 
+
+Description: This rule checks if the transaction amount is a rounded amount (e.g., $1,000,000, $750,000, $500,000).  
+Define a configurable parameter to allow acceptable number of zeroes in the amount. 
+Default Risk Score: 2 
+Logic: If the transaction amount is a rounded amount, the risk score of 2 is assigned to the transaction. 
+Example: 
++ If the transaction amount is $1,000,000, the risk score is 2. 
+Once there is hit found against any given rules, the resultant data should include the detected rule and the associated score.
+
+Rule involving more than 1 transaction shall share the same score
+
+Label the transaction as suspicious / non-suspicious – If the overall score is >= 3

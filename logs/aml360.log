@@ -105,3 +105,10 @@
 2025-10-11 15:02:00 | vectorstore.chroma_client | WARNING | chroma_client.py:52 | sentence-transformers not available - embeddings functionality disabled
 2025-10-11 15:02:01 | backend.ml_model | INFO | ml_model.py:409 | Model loaded from models/rf_model.joblib, version: 20251011_103502
 2025-10-11 15:03:07 | backend.ml_model | INFO | ml_model.py:409 | Model loaded from models/rf_model.joblib, version: 20251011_103502
+2025-10-11 15:08:26 | vectorstore.chroma_client | WARNING | chroma_client.py:201 | No embedding model available for retrieval
+2025-10-11 15:08:35 | vectorstore.chroma_client | WARNING | chroma_client.py:201 | No embedding model available for retrieval
+2025-10-11 15:22:07 | vectorstore.chroma_client | WARNING | chroma_client.py:201 | No embedding model available for retrieval
+2025-10-11 15:36:40 | backend.database | INFO | database.py:87 | Database initialized successfully
+2025-10-11 15:36:41 | vectorstore.chroma_client | WARNING | chroma_client.py:52 | sentence-transformers not available - embeddings functionality disabled
+2025-10-11 15:36:42 | backend.ml_model | INFO | ml_model.py:409 | Model loaded from models/rf_model.joblib, version: 20251011_103502
+2025-10-11 15:38:32 | backend.ml_model | INFO | ml_model.py:409 | Model loaded from models/rf_model.joblib, version: 20251011_103502
