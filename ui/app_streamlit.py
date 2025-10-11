@@ -776,11 +776,11 @@ elif page == "✍️ Manual Transaction Entry":
                         st.caption("Accuracy: ~92% (validated on test set)")
                         
                         probability = ml_result['probabilities'][0]
-                        prediction = ml_result['predictions'][0]
                         
                         st.metric("Suspicion Probability", f"{probability:.2%}")
                         
-                        if prediction:
+                        # Prediction based on risk score threshold (≥3 = Suspicious)
+                        if score_result['suspicious']:
                             st.error("Prediction: Suspicious")
                         else:
                             st.success("Prediction: Non suspicious")
