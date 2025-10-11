@@ -3,18 +3,20 @@
 This demo script provides a step-by-step walkthrough of the AML 360 system's key features for presentations and evaluations.
 
 ## 🎯 Demo Objectives
-- Demonstrate real-time transaction scoring and rule engine
-- Show ML model integration with explainability (SHAP)
-- Highlight RAG-powered chatbot for investigations
+- Demonstrate real-time transaction scoring with 5 deterministic rules
+- Show ML model integration with explainability
+- Highlight RAG-powered chatbot for transaction explanations
 - Showcase comprehensive dashboard and analytics
-- Prove system can handle 100k+ transactions
+- Prove batch processing capability for 100k+ transactions
 
 ## ⏱️ Quick Setup (30 seconds)
+
+**Note**: On Replit, services start automatically. Otherwise:
 
 ### Terminal Commands
 ```bash
 # Terminal 1: Start referential service
-uvicorn backend.referentials_service:app --reload --port 8001
+uv run uvicorn backend.referentials_service:app --host 0.0.0.0 --port 8001
 
 # Terminal 2: Start main application  
-streamlit run ui/app_streamlit.py --server.port 5000
+uv run streamlit run ui/app_streamlit.py --server.port 5000

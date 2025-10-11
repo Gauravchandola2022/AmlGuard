@@ -4,3 +4,41 @@
 2025-10-11 10:21:05 | vectorstore.chroma_client | WARNING | chroma_client.py:52 | sentence-transformers not available - embeddings functionality disabled
 2025-10-11 10:21:11 | backend.database | INFO | database.py:87 | Database initialized successfully
 2025-10-11 10:21:14 | vectorstore.chroma_client | WARNING | chroma_client.py:52 | sentence-transformers not available - embeddings functionality disabled
+2025-10-11 10:33:41 | backend.database | INFO | database.py:87 | Database initialized successfully
+2025-10-11 10:33:49 | backend.database | INFO | database.py:87 | Database initialized successfully
+2025-10-11 10:33:50 | vectorstore.chroma_client | WARNING | chroma_client.py:52 | sentence-transformers not available - embeddings functionality disabled
+2025-10-11 10:33:56 | backend.database | INFO | database.py:87 | Database initialized successfully
+2025-10-11 10:33:57 | backend.ml_model | INFO | ml_model.py:171 | Starting ML model training...
+2025-10-11 10:34:11 | backend.database | INFO | database.py:87 | Database initialized successfully
+2025-10-11 10:34:12 | backend.ml_model | INFO | ml_model.py:171 | Starting ML model training...
+2025-10-11 10:34:14 | backend.ml_model | INFO | ml_model.py:253 | SHAP not available, using fallback explanations
+2025-10-11 10:34:14 | backend.ml_model | INFO | ml_model.py:257 | Model training completed:
+2025-10-11 10:34:14 | backend.ml_model | INFO | ml_model.py:258 |   - Precision: 1.000
+2025-10-11 10:34:14 | backend.ml_model | INFO | ml_model.py:259 |   - Recall: 1.000
+2025-10-11 10:34:14 | backend.ml_model | INFO | ml_model.py:260 |   - F1: 1.000
+2025-10-11 10:34:14 | backend.ml_model | INFO | ml_model.py:261 |   - AUC-ROC: 1.000
+2025-10-11 10:34:29 | backend.database | INFO | database.py:87 | Database initialized successfully
+2025-10-11 10:34:30 | backend.ml_model | INFO | ml_model.py:171 | Starting ML model training...
+2025-10-11 10:34:32 | backend.ml_model | INFO | ml_model.py:253 | SHAP not available, using fallback explanations
+2025-10-11 10:34:32 | backend.ml_model | INFO | ml_model.py:257 | Model training completed:
+2025-10-11 10:34:32 | backend.ml_model | INFO | ml_model.py:258 |   - Precision: 1.000
+2025-10-11 10:34:32 | backend.ml_model | INFO | ml_model.py:259 |   - Recall: 1.000
+2025-10-11 10:34:32 | backend.ml_model | INFO | ml_model.py:260 |   - F1: 1.000
+2025-10-11 10:34:32 | backend.ml_model | INFO | ml_model.py:261 |   - AUC-ROC: 1.000
+2025-10-11 10:34:46 | backend.database | INFO | database.py:87 | Database initialized successfully
+2025-10-11 10:34:47 | backend.ml_model | INFO | ml_model.py:171 | Starting ML model training...
+2025-10-11 10:34:49 | backend.ml_model | INFO | ml_model.py:253 | SHAP not available, using fallback explanations
+2025-10-11 10:34:49 | backend.ml_model | INFO | ml_model.py:257 | Model training completed:
+2025-10-11 10:34:49 | backend.ml_model | INFO | ml_model.py:258 |   - Precision: 1.000
+2025-10-11 10:34:49 | backend.ml_model | INFO | ml_model.py:259 |   - Recall: 1.000
+2025-10-11 10:34:49 | backend.ml_model | INFO | ml_model.py:260 |   - F1: 1.000
+2025-10-11 10:34:49 | backend.ml_model | INFO | ml_model.py:261 |   - AUC-ROC: 1.000
+2025-10-11 10:35:00 | backend.database | INFO | database.py:87 | Database initialized successfully
+2025-10-11 10:35:00 | backend.ml_model | INFO | ml_model.py:171 | Starting ML model training...
+2025-10-11 10:35:02 | backend.ml_model | INFO | ml_model.py:253 | SHAP not available, using fallback explanations
+2025-10-11 10:35:02 | backend.ml_model | INFO | ml_model.py:257 | Model training completed:
+2025-10-11 10:35:02 | backend.ml_model | INFO | ml_model.py:258 |   - Precision: 1.000
+2025-10-11 10:35:02 | backend.ml_model | INFO | ml_model.py:259 |   - Recall: 1.000
+2025-10-11 10:35:02 | backend.ml_model | INFO | ml_model.py:260 |   - F1: 1.000
+2025-10-11 10:35:02 | backend.ml_model | INFO | ml_model.py:261 |   - AUC-ROC: 1.000
+2025-10-11 10:35:02 | backend.ml_model | INFO | ml_model.py:397 | Model saved to models/rf_model.joblib
