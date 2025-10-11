@@ -390,19 +390,32 @@ elif page == "📊 Dashboard":
         col1, col2 = st.columns([2, 1])
         
         with col1:
+            # Create a mapping from ISO-2 to ISO-3 codes
+            iso2_to_iso3 = {
+                'US': 'USA', 'GB': 'GBR', 'FR': 'FRA', 'DE': 'DEU', 'CA': 'CAN',
+                'AE': 'ARE', 'BR': 'BRA', 'IN': 'IND', 'ZA': 'ZAF', 'MX': 'MEX',
+                'IR': 'IRN', 'KP': 'PRK', 'SY': 'SYR', 'RU': 'RUS', 'CU': 'CUB',
+                'CN': 'CHN', 'JP': 'JPN', 'AU': 'AUS', 'IT': 'ITA', 'ES': 'ESP',
+                'NL': 'NLD', 'BE': 'BEL', 'CH': 'CHE', 'SE': 'SWE', 'NO': 'NOR',
+                'DK': 'DNK', 'FI': 'FIN', 'PL': 'POL', 'TR': 'TUR', 'SA': 'SAU',
+                'EG': 'EGY', 'NG': 'NGA', 'KE': 'KEN', 'GH': 'GHA', 'TZ': 'TZA'
+            }
+            
             country_df = pd.DataFrame({
-                'country': country_counts.index,
+                'country_iso2': country_counts.index,
+                'country_iso3': [iso2_to_iso3.get(c, c) for c in country_counts.index],
                 'count': country_counts.values
             })
             
             fig = px.choropleth(
                 country_df,
-                locations='country',
-                locationmode='ISO-2',
+                locations='country_iso3',
+                locationmode='ISO-3',
                 color='count',
                 title='Global Distribution of Flagged Transactions',
                 color_continuous_scale='Reds',
-                labels={'count': 'Flagged Transactions'}
+                labels={'count': 'Flagged Transactions'},
+                hover_name='country_iso2'
             )
             fig.update_geos(showcountries=True)
             fig.update_layout(height=400)
