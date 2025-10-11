@@ -1,0 +1,429 @@
+Prompt — Build an end-to-end AML 360 Streamlit webapp (full requirements, production-grade)
+
+Use this prompt to instruct an LLM, an engineering contractor, or an automated code-generation tool to build a complete, production-minded Streamlit webapp that implements the entire AML 360 problem statement. The prompt is intentionally explicit about inputs, outputs, APIs, rules, scoring, explainability, ML, vector/RAG chatbot, testing, and deployment. Copy-paste this prompt into your generator or share with your developer team.
+
+You are an expert full-stack AI/ML engineer. Build an end-to-end Streamlit web application and supporting backend that implements a real-world AML transaction monitoring pipeline called AML 360. The system must include referential APIs, a deterministic rule engine, batch scoring of a provided transactions CSV (100k rows), optional streaming, a predictive ML model (optional but preferred), per-transaction explainability, a vector DB + RAG chatbot for explanations, and a Streamlit UI for manual entry and dashboards. Produce runnable code, tests, documentation, and a demo script.
+
+Below are the detailed functional, technical, and acceptance requirements. Follow them exactly.
+
+1 — Inputs & data formats
+1.1 Transaction CSV
+
+Expect a CSV transactions.csv with these columns (exact names):
+
+transaction_id, transaction_date, account_id, originator_name, originator_address, originator_country, beneficiary_name, beneficiary_address, beneficiary_country, amount, currency, payment_type, payment_instruction, beneficiary_account_number, originator_account_number
+
+
+Field notes
+
+transaction_date ISO format (e.g., 2025-10-10T14:23:00Z or YYYY-MM-DD HH:MM:SS).
+
+amount numeric (amount in currency).
+
+Provide a small example row in README (see Example CSV row below).
+
+1.2 Referential APIs (FastAPI service)
+
+Create a small referential FastAPI service exposing three endpoints that return JSON:
+
+GET /api/exchange-rates
+
+{ "base": "USD", "rates": {"USD":1.0, "EUR":0.91, "GBP":0.78, "INR":83.2, "CNY":7.10, "JPY":142.5, "AED":3.67, "BRL":5.00} }
+
+
+GET /api/high-risk-countries
+
+{
+  "Level_1": ["DE","US","FR","GB","CA"],
+  "Level_2": ["AE","BR","IN","ZA","MX"],
+  "Level_3": ["IR","KP","SY","RU","CU"],
+  "scores": {"Level_1":2, "Level_2":4, "Level_3":10}
+}
+
+
+GET /api/suspicious-keywords
+
+{ "keywords": ["gift","donation","offshore","cash","urgent","invoice 999","crypto","Hawala","Shell","bearer","sensitive"] }
+
+
+The referential service must be versioned (/v1/...) and cache responses (simple in-memory with TTL or using Redis if available).
+
+Provide scripts that seed these referentials from open source lists (or bundling JSON files is acceptable for hackathon).
+
+2 — Rule engine: exact rule definitions & outputs
+
+Implement a deterministic rule engine function score_transaction(txn, referentials, state) that returns a JSON dict:
+
+{
+  "transaction_id": "...",
+  "score_breakdown": [
+    {"rule_id":"R1","rule_name":"BeneficiaryHighRisk","hit":true,"score":10,"evidence":"beneficiary_country=IR Level_3"},
+    {"rule_id":"R2","rule_name":"SuspiciousKeyword","hit":true,"score":3,"evidence":"payment_instruction contains 'donation'"},
+    ...
+  ],
+  "total_score": 13,
+  "suspicious": true
+}
+
+Rules (implement exactly as below)
+
+Rule #1 — Beneficiary country in high-risk list
+
+If beneficiary_country equals a code in referential high-risk-countries then add the corresponding level score (2/4/10).
+
+Evidence: include beneficiary_country and level.
+
+Rule #2 — Suspicious keyword in payment_instruction
+
+Case-insensitive match using whole-word boundaries for listed keywords.
+
+Default score: +3.
+
+Evidence: matched keyword and snippet.
+
+Implement optional fuzzy matching (edit distance <=1) as configurable off-by-default.
+
+Rule #3 — Amount > $1,000,000 (USD equivalent)
+
+Convert amount to USD using exchange rates endpoint then if amount_usd > 1_000_000 add +3.
+
+Evidence: amount_usd.
+
+Rule #4 — Structuring: 3-day sum of amounts in [$8,000, $9,999] range per account > $1,000,000
+
+For transactions with amount_usd between 8000 and 9,999 inclusive, compute per account_id the rolling sum in any 3-day window (calendar days, inclusive). If the sum > 1,000,000 then mark each transaction in that contributing window as hit and add +5 to each of those transactions.
+
+Evidence: list of transaction_ids that form the structuring group and the computed sum.
+
+Implementation detail: in batch, compute with pandas groupby + rolling window on datetime index; in streaming, maintain per-account sliding state (Redis or in-memory map with TTL).
+
+Rule #5 — Rounded amounts
+
+Detect amounts that are "rounded" — implement by counting trailing zeros in the integer part of amount_usd. Make trailing zero threshold configurable (default: >=4 trailing zeros means hit). Example: 1,000,000 has 6 trailing zeros → hit.
+
+Default score: +2.
+
+Evidence: trailing zero count.
+
+Additional engine behaviors
+
+If multiple rules hit, sum scores.
+
+If total_score >= 3 label suspicious = true.
+
+For multi-transaction rules (Rule #4), ensure group members all include same evidence and same rule score.
+
+Return score_breakdown with human-readable rule names and compact evidence.
+
+3 — Feature engineering & ML model spec
+
+Build a predictive model that consumes rule outputs + transaction features to reduce false positives and generalize beyond rules.
+
+Model inputs (features)
+
+Rule hits: binary flag per rule and per-rule score numeric.
+
+total_rule_score numeric.
+
+amount_usd (log transform as optional).
+
+payment_type (one-hot).
+
+originator_country, beneficiary_country (country risk score numeric using referential mapping).
+
+payment_instruction_embeddings (optional): use sentence-transformers or OpenAI embeddings (specify config to avoid external API if inaccessible).
+
+Account aggregates: count_tx_7d, sum_tx_7d, count_suspicious_90d (if available).
+
+Model choice & training
+
+Baseline: RandomForest or XGBoost classifier.
+
+Use time-split train/test (train on earlier dates, test on later dates).
+
+Balancing: use class weights or oversampling (SMOTE) because suspicious are rare.
+
+Metrics: precision, recall, F1, AUC-ROC. The target production metric is recall >= 0.90 while keeping false positive rate < 0.05 if possible; tune decision threshold on validation set.
+
+Persist model via joblib with versioning.
+
+Explainability
+
+Use SHAP to produce per-transaction explanations; store top 3 contributing features (positive/negative) in the explain JSON.
+
+4 — Vector DB + RAG chatbot
+
+Implement a basic RAG system to explain flagged transactions.
+
+Steps
+
+For each flagged transaction, create a document text:
+
+TXN_ID: {transaction_id}
+Amount USD: {amount_usd}
+Rules: {JSON of score_breakdown}
+Payment instruction: {payment_instruction}
+Other metadata: account_id, originator_country, beneficiary_country, date
+
+
+Generate embeddings for that text (use HuggingFace sentence-transformer or OpenAI embeddings depending on availability).
+
+Store embedding + metadata in a vector DB (Chroma recommended for local dev). Include id, transaction_id, source_text, rule_hits_json, timestamp.
+
+Implement a retrieval function retrieve_evidence(query_text, top_k=5).
+
+Chatbot
+
+Use LangChain (or a simple chain) connecting retriever → LLM.
+
+Provide a prompt template that includes:
+
+Retrieved evidence texts (top 3) and their rule metadata.
+
+A short instruction: “Using the evidence, answer concisely: Why was transaction {transaction_id} flagged? Which rules triggered? What are recommended next steps for an investigator?”
+
+Implement a fallback if no retrieval found.
+
+If external LLMs are not available, implement a deterministic answer generator that summarizes score_breakdown and evidence.
+
+5 — Streamlit UI detailed requirements
+
+Build a single Streamlit app with four main pages/tabs:
+
+A. Home / Overview
+
+Top KPIs: total transactions processed, flagged count, flagged %.
+
+Small chart: flagged vs normal (bar or area).
+
+Recent alerts table (paginated, latest 100 flagged rows).
+
+B. Dashboard
+
+Heatmap / bar chart of flagged transactions by beneficiary_country (top 10).
+
+Time-series: flagged counts per day.
+
+Top suspicious keywords (bar chart).
+
+Structuring visualization: show count of structuring groups over time and example groups.
+
+C. Manual Transaction Entry
+
+A form with all transaction fields; on submit:
+
+Call local scoring function (no network) to compute score_breakdown and suspicious.
+
+Display the total_score, score_breakdown (pretty bullets), and evidence.
+
+If ML model present, show model probability and top-3 SHAP features.
+
+Provide a button “Explain (Chat)” that queries the RAG chatbot and displays its answer.
+
+D. Investigations / Export
+
+Table of flagged transactions with filters: date range, country, score range, payment_type.
+
+Checkbox to select rows and Export CSV or Create Case (save JSON file to cases/).
+
+For each row, an expand/collapse to view:
+
+score_breakdown JSON,
+
+SHAP summary,
+
+RAG explanation.
+
+UI behavior & UX rules
+
+All lookups to referential data should use the local referential service or local JSON files cached in app.
+
+Use st.cache_data or st.cache_resource appropriately for heavy operations (embeddings, model load).
+
+Provide clear error messages for missing fields and data type mismatches.
+
+6 — Storage & artifacts
+
+Use Postgres for raw transactions and flagged metadata (schema below). For hackathon/local, SQLite or local Parquet is acceptable.
+
+Use Chroma or FAISS for vector DB (Chroma recommended).
+
+Save audit trails and explainability artifacts as JSON columns in DB or as files in audit/ folder.
+
+Minimal DB schema for flagged transactions
+flagged_transactions(
+  id SERIAL PRIMARY KEY,
+  transaction_id TEXT UNIQUE,
+  account_id TEXT,
+  transaction_date TIMESTAMP,
+  amount_usd DOUBLE PRECISION,
+  total_score INT,
+  suspicious BOOLEAN,
+  score_breakdown JSONB,
+  shap_summary JSONB,
+  rag_retrieval JSONB,
+  created_at TIMESTAMP DEFAULT now()
+)
+
+7 — Tests & validation
+
+Provide automated tests using pytest.
+
+Unit tests (must include)
+
+Test each rule individually with edge cases:
+
+R1: known high-risk and non-high-risk countries.
+
+R2: payment_instruction matches whole-word, case variants, and ignores substrings.
+
+R3: amounts just below and just above $1,000,000.
+
+R4: structuring window edge cases — transactions on boundary days and sums exactly $1,000,000.
+
+R5: rounded amounts with configurable trailing zero threshold.
+
+Integration tests
+
+End-to-end test: small synthetic CSV (20–50 rows) processed by the batch scorer, verify flagged count and sample score_breakdown.
+
+RAG test: insert a flagged txn, run retriever and ensure top evidence contains that txn’s rule JSON.
+
+Performance test
+
+Provide a script that processes a large file in chunks to ensure the system can handle 100k rows without crashing; measure memory use and time (print stats). (Do not require strict SLA; just ensure it completes locally.)
+
+8 — Deliverables (files & commands)
+
+Produce a git repo with the following files (exact names):
+
+/aml360/
+├─ backend/
+│  ├─ referentials_service.py      # FastAPI referential server
+│  ├─ rules.py                     # rule engine
+│  ├─ scorer.py                    # batch scoring script (reads CSV, writes scored CSV)
+│  ├─ ml_model.py                  # training + inference wrappers
+│  └─ requirements.txt
+├─ ui/
+│  └─ app_streamlit.py             # Streamlit app entry point
+├─ vectorstore/
+│  └─ chroma_client.py
+├─ models/
+│  └─ rf_model.joblib              # saved model (if trained)
+├─ data/
+│  └─ transactions.csv             # (user-provided)
+├─ tests/
+│  └─ test_rules.py
+├─ Dockerfile
+├─ docker-compose.yml              # optional (Postgres + Chroma)
+├─ README.md
+└─ demo_script.md                  # 2-3 minute demo steps
+
+Run commands (must be included in README)
+
+Setup
+
+python -m venv venv
+source venv/bin/activate
+pip install -r backend/requirements.txt
+
+
+Start referentials server:
+
+uvicorn backend.referentials_service:app --reload --port 8001
+
+
+Batch scoring:
+
+python backend/scorer.py --input data/transactions.csv --output results/scored_full.csv --referential http://localhost:8001/api
+
+
+Run Streamlit UI:
+
+streamlit run ui/app_streamlit.py
+
+9 — Security, privacy, and logging
+
+Mask or hash PII fields (originator_name, beneficiary_name, account numbers) when saved to logs or shown in public demo.
+
+All API calls and model inferences must generate an audit log line with: timestamp, transaction_id, input_hash, model_version, rules_version, total_score, suspicious_flag.
+
+Provide a simple log rotation / retention policy instruction in README.
+
+10 — Edge cases & error handling
+
+Missing currency → default to USD and log warning.
+
+Unknown country codes → treat as Level_1 with note in evidence (or configurable).
+
+Missing payment_instruction → treat as empty string.
+
+Malformed dates → attempt ISO parse; if fails, drop row and log to errors/ with reason.
+
+If referential API unavailable → fallback to local JSON files and log incident.
+
+11 — Test data examples (include in repo)
+Example CSV row
+"TXN0001","2025-10-10 14:23:00","ACCT1001","Alice Corp","123 Lane, City, IND","IN","Bob LLC","456 Rd, City, IR","IR",1000000,"USD","transfer","urgent donation offshore","BEN001","ORG001"
+
+Example scorer output row (CSV or JSON)
+{
+ "transaction_id":"TXN0001",
+ "transaction_date":"2025-10-10T14:23:00Z",
+ "amount_usd":1000000.0,
+ "score_breakdown":[
+   {"rule_id":"R1","rule_name":"BeneficiaryHighRisk","hit":true,"score":10,"evidence":"IR Level_3"},
+   {"rule_id":"R2","rule_name":"SuspiciousKeyword","hit":true,"score":3,"evidence":"contains 'donation'"},
+   {"rule_id":"R3","rule_name":"HighAmount","hit":true,"score":3,"evidence":"amount_usd=1_000_000"}
+ ],
+ "total_score":16,
+ "suspicious":true
+}
+
+12 — Acceptance criteria (must pass)
+
+scorer.py processes transactions.csv and produces scored_full.csv with score_breakdown, total_score, suspicious columns.
+
+Streamlit UI loads and allows manual transaction scoring and shows dashboard charts and a table of flagged transactions.
+
+Unit tests pass (pytest) for rules and at least one integration test.
+
+RAG retrieval returns relevant evidence for a given flagged transaction and the chatbot returns a human-readable explanation.
+
+All deliverables are runnable with the commands in README.
+
+13 — Implementation style & constraints
+
+Use Python 3.10+, idiomatic code, type hints, docstrings for public functions.
+
+Use pandas for batch, fastapi for backend, streamlit for UI, scikit-learn/xgboost for ML, shap for explanations, chromadb or faiss for vector store, and langchain for RAG if external LLM access exists. If external APIs are unavailable, gracefully degrade (deterministic explanations).
+
+Keep code modular: separate modules for referentials, rules, scorer, ml, vectorstore, ui.
+
+Provide a requirements.txt with pinned versions.
+
+14 — Deliver an explicit checklist in the repo
+
+At the root README.md include a checklist of features that were implemented and any that were intentionally omitted (and why). Also include a short “next steps / improvements” section.
+
+15 — Provide these artifacts in the PR/Zip
+
+All source code.
+
+results/scored_full.csv (sample run on provided CSV with at least first 10 flagged rows).
+
+models/rf_model.joblib (if trained).
+
+demo_script.md with step-by-step screen flow and 3 example transactions to showcase rules and ML.
+
+tests/ with pytest tests and instructions to run them.
+
+Final note for implementer
+
+Be conservative about LLM hallucination: RAG answers must include the retrieved evidence snippet and the list of triggered rules verbatim. If an LLM is used, the prompt must instruct it to only summarize the retrieved evidence and not invent new facts.
+
+If you want, I can now generate:
+
+a ready-to-run backend/rules.py + backend/scorer.py that follows these exact rules, or
+
+the full ui/app_streamlit.py skeleton wired to the rule engine and referential JSON.
