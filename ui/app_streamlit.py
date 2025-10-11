@@ -1050,3 +1050,14 @@ st.markdown("""
 Built with Streamlit • Real-time transaction monitoring and investigation tools
 </div>
 """, unsafe_allow_html=True)
+import sys
+import os
+
+# # Adds the parent directory (AmlGuard) to sys.path
+# # '..' means "go up one directory"
+# project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+# if project_root not in sys.path:
+#     sys.path.append(project_root)
+
+# # ... rest of your imports will now work ...
+# from backend.ml_model import AMLMLModel 
