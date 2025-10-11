@@ -365,7 +365,7 @@ elif page == "📊 Dashboard":
             fig = px.histogram(
                 alerts_df, 
                 x='amount_usd',
-                bins=20,
+                nbins=20,
                 title="Distribution of Transaction Amounts (USD)",
                 color_discrete_sequence=['#ff8c42']
             )
