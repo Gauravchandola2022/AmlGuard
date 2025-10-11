@@ -1,0 +1,2 @@
+2025-10-11 09:09:39 | backend.database | INFO | database.py:87 | Database initialized successfully
+2025-10-11 09:09:40 | vectorstore.chroma_client | WARNING | chroma_client.py:52 | sentence-transformers not available - embeddings functionality disabled
