@@ -447,6 +447,29 @@ elif page == "✍️ Manual Transaction Entry":
             # Score with rule engine
             score_result = st.session_state.rule_engine.score_transaction(txn_data)
             
+            # Add USD conversion
+            amount_usd = st.session_state.rule_engine.convert_to_usd(
+                txn_data['transaction_amount'], 
+                txn_data['currency_code']
+            )
+            
+            # Save flagged transaction to database if suspicious
+            if score_result['suspicious']:
+                txn_data_to_save = txn_data.copy()
+                txn_data_to_save.update({
+                    'total_score': score_result['total_score'],
+                    'suspicious': score_result['suspicious'],
+                    'score_breakdown': score_result['score_breakdown'],
+                    'amount_usd': amount_usd
+                })
+                
+                # Save to database
+                if st.session_state.database.insert_flagged_transaction(txn_data_to_save):
+                    # Clear cached data so it shows up on other pages
+                    load_dashboard_data.clear()
+                    load_recent_alerts.clear()
+                    st.success("✅ Transaction saved to database and flagged for review")
+            
             # Display results
             col1, col2 = st.columns([2, 1])
             
