@@ -141,7 +141,7 @@ def create_transaction_form():
         with col1:
             transaction_id = st.text_input("Transaction ID", value=f"TXN_{uuid.uuid4().hex[:8].upper()}")
             account_id = st.text_input("Account ID", value="ACC_001")
-            transaction_date = st.datetime_input("Transaction Date", value=datetime.now())
+            transaction_date = st.date_input("Transaction Date", value=datetime.now())
             originator_name = st.text_input("Originator Name", value="John Doe")
             originator_country = st.selectbox("Originator Country", ["US", "GB", "FR", "DE", "CA", "AE", "BR", "IN", "ZA", "MX", "IR", "KP", "SY", "RU", "CU"])
             beneficiary_name = st.text_input("Beneficiary Name", value="Jane Smith")
