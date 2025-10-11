@@ -39,7 +39,8 @@ def log_transaction_scored(
     suspicious: bool,
     rules_version: str = "1.0",
     model_version: Optional[str] = None,
-    input_hash: Optional[str] = None
+    input_hash: Optional[str] = None,
+    transaction_data: Optional[Dict[str, Any]] = None
 ) -> None:
     """Log when a transaction is scored"""
     
@@ -58,6 +59,11 @@ def log_transaction_scored(
         'suspicious_flag': suspicious,
         'timestamp': datetime.now().isoformat()
     }
+    
+    # Add masked transaction data if provided
+    if transaction_data:
+        masked_data = mask_transaction_for_logging(transaction_data)
+        log_entry['transaction_metadata'] = masked_data
     
     audit_logger.info(json.dumps(log_entry))
 

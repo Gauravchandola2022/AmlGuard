@@ -90,11 +90,15 @@ def mask_transaction_for_logging(transaction: Dict[str, Any]) -> Dict[str, Any]:
     
     if 'account_id' in logged:
         logged['account_id_hash'] = hash_identifier(logged['account_id'])
+    elif 'account_key' in logged:
+        logged['account_id_hash'] = hash_identifier(logged['account_key'])
     
-    # Remove PII fields entirely from logs
+    # Remove ALL PII fields entirely from logs (including address variants)
     pii_fields = [
         'originator_name', 'beneficiary_name',
         'originator_address', 'beneficiary_address',
+        'originator_address1', 'originator_address2',
+        'beneficiary_address1', 'beneficiary_address2',
         'originator_account_number', 'beneficiary_account_number'
     ]
     
@@ -102,22 +106,41 @@ def mask_transaction_for_logging(transaction: Dict[str, Any]) -> Dict[str, Any]:
         if field in logged:
             del logged[field]
     
+    # Sanitize payment instruction to remove embedded PII
+    if 'payment_instruction' in logged:
+        logged['payment_instruction'] = sanitize_payment_instruction(logged['payment_instruction'])
+    
     return logged
 
 
 def sanitize_payment_instruction(instruction: str) -> str:
-    """Sanitize payment instruction by removing potential PII patterns"""
+    """Sanitize payment instruction by removing potential PII patterns
+    
+    Order matters: more specific patterns first, then generic ones
+    """
     if not instruction:
         return ""
+    
+    # Remove account numbers with labels FIRST (Acct#, Account No, A/C, etc.)
+    instruction = re.sub(r'\b(?:Acct?\.?\s*#?|Account\s*(?:No\.?|Number)?|A/C\.?)\s*:?\s*\d+\b', '[ACCT]', instruction, flags=re.IGNORECASE)
+    
+    # Remove IBAN patterns (starts with 2 letters, followed by 2 digits, then up to 30 alphanumeric)
+    instruction = re.sub(r'\b[A-Z]{2}\d{2}[A-Z0-9]{1,30}\b', '[IBAN]', instruction)
+    
+    # Remove routing/SWIFT codes (typically 8-11 alphanumeric characters)
+    instruction = re.sub(r'\b[A-Z]{6}[A-Z0-9]{2}(?:[A-Z0-9]{3})?\b', '[ROUTING]', instruction)
+    
+    # Remove credit card numbers (16 digits pattern with optional separators)
+    instruction = re.sub(r'\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b', '[CARD]', instruction)
+    
+    # Remove long numeric sequences (10+ digits) that could be account numbers
+    instruction = re.sub(r'\b\d{10,}\b', '[ACCT_NUM]', instruction)
     
     # Remove email addresses
     instruction = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', '[EMAIL]', instruction)
     
-    # Remove phone numbers (various formats)
+    # Remove phone numbers (various formats) - LAST to avoid conflicts
     instruction = re.sub(r'\b\d{3}[-.]?\d{3}[-.]?\d{4}\b', '[PHONE]', instruction)
     instruction = re.sub(r'\b\+?\d{1,3}[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,9}\b', '[PHONE]', instruction)
-    
-    # Remove credit card numbers (simple pattern)
-    instruction = re.sub(r'\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b', '[CARD]', instruction)
     
     return instruction

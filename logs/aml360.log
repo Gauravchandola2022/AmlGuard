@@ -42,3 +42,9 @@
 2025-10-11 10:35:02 | backend.ml_model | INFO | ml_model.py:260 |   - F1: 1.000
 2025-10-11 10:35:02 | backend.ml_model | INFO | ml_model.py:261 |   - AUC-ROC: 1.000
 2025-10-11 10:35:02 | backend.ml_model | INFO | ml_model.py:397 | Model saved to models/rf_model.joblib
+2025-10-11 10:37:02 | backend.database | INFO | database.py:87 | Database initialized successfully
+2025-10-11 10:37:02 | vectorstore.chroma_client | WARNING | chroma_client.py:52 | sentence-transformers not available - embeddings functionality disabled
+2025-10-11 10:37:03 | backend.ml_model | INFO | ml_model.py:409 | Model loaded from models/rf_model.joblib, version: 20251011_103502
+2025-10-11 10:41:22 | backend.database | INFO | database.py:87 | Database initialized successfully
+2025-10-11 10:41:23 | vectorstore.chroma_client | WARNING | chroma_client.py:52 | sentence-transformers not available - embeddings functionality disabled
+2025-10-11 10:41:23 | backend.ml_model | INFO | ml_model.py:409 | Model loaded from models/rf_model.joblib, version: 20251011_103502

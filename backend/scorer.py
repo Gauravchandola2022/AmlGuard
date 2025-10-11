@@ -10,12 +10,16 @@ import time
 from pathlib import Path
 import logging
 from typing import Optional
+import sys
 
-from rules import RuleEngine
-from utils.logging_config import setup_logging
+# Add parent directory to path
+sys.path.append(str(Path(__file__).parent.parent))
+
+from backend.rules import RuleEngine
 
 # Setup logging
-logger = setup_logging(__name__)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(levelname)s | %(message)s')
+logger = logging.getLogger(__name__)
 
 class BatchScorer:
     def __init__(self, referential_url: str = "http://localhost:8001/api"):
@@ -73,18 +77,57 @@ class BatchScorer:
         return scored_df
     
     def save_results(self, df: pd.DataFrame, output_path: str):
-        """Save scored results to CSV"""
+        """Save scored results to CSV with PII masking for export"""
         try:
+            # Import PII masking
+            sys.path.append(str(Path(__file__).parent.parent))
+            from utils.pii_masking import mask_name, mask_account_number, sanitize_payment_instruction
+            
+            # Create a copy for export
+            export_df = df.copy()
+            
+            # Mask PII fields for export
+            if 'originator_name' in export_df.columns:
+                export_df['originator_name'] = export_df['originator_name'].apply(lambda x: mask_name(str(x)) if pd.notna(x) else x)
+            
+            if 'beneficiary_name' in export_df.columns:
+                export_df['beneficiary_name'] = export_df['beneficiary_name'].apply(lambda x: mask_name(str(x)) if pd.notna(x) else x)
+            
+            # Remove or mask address fields
+            address_fields = ['originator_address1', 'originator_address2', 'beneficiary_address1', 'beneficiary_address2']
+            for field in address_fields:
+                if field in export_df.columns:
+                    export_df[field] = '***MASKED***'
+            
+            # Mask account numbers - show only last 4 digits
+            if 'originator_account_number' in export_df.columns:
+                export_df['originator_account_number'] = export_df['originator_account_number'].apply(
+                    lambda x: mask_account_number(str(x)) if pd.notna(x) else x
+                )
+            
+            if 'beneficiary_account_number' in export_df.columns:
+                export_df['beneficiary_account_number'] = export_df['beneficiary_account_number'].apply(
+                    lambda x: mask_account_number(str(x)) if pd.notna(x) else x
+                )
+            
+            # Sanitize payment instructions
+            if 'payment_instruction' in export_df.columns:
+                export_df['payment_instruction'] = export_df['payment_instruction'].apply(
+                    lambda x: sanitize_payment_instruction(str(x)) if pd.notna(x) else x
+                )
+            
             # Convert score_breakdown to JSON string for CSV export
-            if 'score_breakdown' in df.columns:
-                df['score_breakdown_json'] = df['score_breakdown'].apply(json.dumps)
+            if 'score_breakdown' in export_df.columns:
+                export_df['score_breakdown_json'] = export_df['score_breakdown'].apply(json.dumps)
+                # Remove the list column
+                export_df = export_df.drop('score_breakdown', axis=1)
             
             # Create output directory if it doesn't exist
             output_file = Path(output_path)
             output_file.parent.mkdir(parents=True, exist_ok=True)
             
-            df.to_csv(output_path, index=False)
-            logger.info(f"Results saved to {output_path}")
+            export_df.to_csv(output_path, index=False)
+            logger.info(f"Results saved to {output_path} (PII masked)")
             
         except Exception as e:
             logger.error(f"Error saving results: {e}")
