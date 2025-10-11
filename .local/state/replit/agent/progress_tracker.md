@@ -5,4 +5,4 @@
 [x] 5. Fixed Dashboard histogram error (bins → nbins parameter)
 [x] 6. Updated ML model display to show "Random Forest" with accuracy info
 [x] 7. Verify the project is working using the feedback tool
-[ ] 8. Inform user the import is completed and they can start building, mark the import as completed using the complete_project_import tool
+[x] 8. Inform user the import is completed and they can start building, mark the import as completed using the complete_project_import tool
