@@ -285,6 +285,7 @@ elif page == "📊 Dashboard":
     # Load data
     with st.spinner("Loading analytics data..."):
         recent_alerts = load_recent_alerts()
+        stats = load_dashboard_data()
     
     if not recent_alerts:
         st.warning("No flagged transaction data available for analytics")
@@ -294,9 +295,10 @@ elif page == "📊 Dashboard":
     alerts_df['transaction_date'] = pd.to_datetime(alerts_df['transaction_date'])
     alerts_df['amount_usd'] = pd.to_numeric(alerts_df['amount_usd'], errors='coerce').fillna(0)
     
-    # Extract country data from metadata
+    # Extract enriched data from metadata
     countries_data = []
     keywords_data = []
+    account_countries = {}
     
     for _, row in alerts_df.iterrows():
         score_breakdown = row.get('score_breakdown', [])
@@ -306,97 +308,287 @@ elif page == "📊 Dashboard":
             except:
                 score_breakdown = []
         
+        account_id = row.get('account_id', 'Unknown')
+        
         for rule in score_breakdown:
             if rule.get('rule_name') == 'BeneficiaryHighRisk':
                 evidence = rule.get('evidence', '')
                 if 'beneficiary_country=' in evidence:
                     country = evidence.split('beneficiary_country=')[1].split(' ')[0]
                     countries_data.append(country)
+                    if account_id not in account_countries:
+                        account_countries[account_id] = []
+                    account_countries[account_id].append(country)
             elif rule.get('rule_name') == 'SuspiciousKeyword':
                 evidence = rule.get('evidence', '')
                 if 'contains' in evidence:
                     keyword = evidence.split("'")[1] if "'" in evidence else 'unknown'
                     keywords_data.append(keyword)
     
-    # 1. Country heatmap
-    st.subheader("🗺️ Flagged Transactions by Beneficiary Country")
+    # 1. Volume of Suspicious vs Normal Transactions
+    st.subheader("📊 Flagged Transaction Volume by Risk Level")
     
-    if countries_data:
-        country_counts = pd.Series(countries_data).value_counts().head(10)
-        
-        fig = px.bar(
-            x=country_counts.values, 
-            y=country_counts.index,
-            orientation='h',
-            title="Top 10 Countries by Flagged Transactions",
-            color=country_counts.values,
-            color_continuous_scale='Reds'
-        )
-        fig.update_layout(yaxis={'categoryorder': 'total ascending'})
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.info("No country data available from flagged transactions")
+    total_flagged = stats.get('total_flagged', len(alerts_df))
+    score_dist = stats.get('score_distribution', {})
     
-    # 2. Time series
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("📈 Flagged Transactions Over Time")
+        low_risk = score_dist.get('low_risk', 0)
+        medium_risk = score_dist.get('medium_risk', 0)
+        high_risk = score_dist.get('high_risk', 0)
         
-        # Daily counts
+        volume_data = pd.DataFrame({
+            'Risk Level': ['Low (3-5)', 'Medium (6-10)', 'High (>10)'],
+            'Count': [low_risk, medium_risk, high_risk]
+        })
+        
+        fig = px.pie(
+            volume_data,
+            names='Risk Level',
+            values='Count',
+            title=f"Flagged Transactions by Risk Level (Total: {total_flagged:,})",
+            color='Risk Level',
+            color_discrete_map={
+                'Low (3-5)': '#ffd43b',
+                'Medium (6-10)': '#ff8c42',
+                'High (>10)': '#ff6b6b'
+            },
+            hole=0.4
+        )
+        fig.update_traces(textposition='inside', textinfo='percent+label')
+        st.plotly_chart(fig, use_container_width=True)
+    
+    with col2:
+        fig = px.bar(
+            volume_data,
+            x='Risk Level',
+            y='Count',
+            title="Risk Level Distribution",
+            color='Risk Level',
+            color_discrete_map={
+                'Low (3-5)': '#ffd43b',
+                'Medium (6-10)': '#ff8c42',
+                'High (>10)': '#ff6b6b'
+            },
+            text='Count'
+        )
+        fig.update_traces(texttemplate='%{text:,.0f}', textposition='outside')
+        fig.update_layout(showlegend=False, yaxis_title="Transaction Count")
+        st.plotly_chart(fig, use_container_width=True)
+    
+    st.info("ℹ️ This dashboard shows analysis of flagged transactions only. All transactions shown have been flagged by the AML monitoring system based on rule-based scoring.")
+    
+    st.divider()
+    
+    # 2. Enhanced Country Heatmap with Geographic Visualization
+    st.subheader("🗺️ Heatmap of Suspicious Countries")
+    
+    if countries_data:
+        country_counts = pd.Series(countries_data).value_counts()
+        
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            country_df = pd.DataFrame({
+                'country': country_counts.index,
+                'count': country_counts.values
+            })
+            
+            fig = px.choropleth(
+                country_df,
+                locations='country',
+                locationmode='ISO-2',
+                color='count',
+                title='Global Distribution of Flagged Transactions',
+                color_continuous_scale='Reds',
+                labels={'count': 'Flagged Transactions'}
+            )
+            fig.update_geos(showcountries=True)
+            fig.update_layout(height=400)
+            st.plotly_chart(fig, use_container_width=True)
+        
+        with col2:
+            top_10 = country_counts.head(10)
+            fig = px.bar(
+                y=top_10.index,
+                x=top_10.values,
+                orientation='h',
+                title="Top 10 High-Risk Countries",
+                color=top_10.values,
+                color_continuous_scale='Reds',
+                labels={'x': 'Count', 'y': 'Country'}
+            )
+            fig.update_layout(yaxis={'categoryorder': 'total ascending'}, showlegend=False)
+            st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("No country data available from flagged transactions")
+    
+    st.divider()
+    
+    # 3. Top Keywords in Suspicious Transactions
+    st.subheader("🔍 Top Keywords in Suspicious Transactions")
+    
+    if keywords_data:
+        keyword_counts = pd.Series(keywords_data).value_counts().head(15)
+        
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            fig = px.bar(
+                x=keyword_counts.values,
+                y=keyword_counts.index,
+                orientation='h',
+                title="Most Frequent Suspicious Keywords",
+                color=keyword_counts.values,
+                color_continuous_scale='Oranges',
+                labels={'x': 'Frequency', 'y': 'Keyword'}
+            )
+            fig.update_layout(yaxis={'categoryorder': 'total ascending'}, showlegend=False, height=500)
+            st.plotly_chart(fig, use_container_width=True)
+        
+        with col2:
+            st.metric("Unique Keywords Detected", len(set(keywords_data)))
+            st.metric("Total Keyword Matches", len(keywords_data))
+            
+            if len(keyword_counts) > 0:
+                st.write("**Most Common:**")
+                for i, (keyword, count) in enumerate(keyword_counts.head(5).items()):
+                    st.write(f"{i+1}. `{keyword}` ({count})")
+    else:
+        st.info("No keyword data available from flagged transactions")
+    
+    st.divider()
+    
+    # 4. Time-Series Analysis with Spikes by Account and Region
+    st.subheader("📈 Time-Series Spikes by Account & Region")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.write("**Daily Transaction Spikes**")
+        
         daily_counts = alerts_df.groupby(alerts_df['transaction_date'].dt.date).size()
         
         if len(daily_counts) > 0:
-            fig = px.line(
-                x=daily_counts.index, 
-                y=daily_counts.values,
-                title="Daily Flagged Transaction Count",
-                labels={'x': 'Date', 'y': 'Count'}
+            avg_daily = daily_counts.mean()
+            std_daily = daily_counts.std()
+            spike_threshold = avg_daily + (2 * std_daily)
+            
+            daily_df = pd.DataFrame({
+                'date': daily_counts.index,
+                'count': daily_counts.values
+            })
+            daily_df['is_spike'] = daily_df['count'] > spike_threshold
+            
+            fig = go.Figure()
+            
+            fig.add_trace(go.Scatter(
+                x=daily_df['date'],
+                y=daily_df['count'],
+                mode='lines+markers',
+                name='Daily Count',
+                line=dict(color='#ff6b6b', width=2),
+                marker=dict(
+                    size=8,
+                    color=['#d63031' if spike else '#ff6b6b' for spike in daily_df['is_spike']],
+                    symbol=['star' if spike else 'circle' for spike in daily_df['is_spike']]
+                )
+            ))
+            
+            fig.add_hline(
+                y=spike_threshold,
+                line_dash="dash",
+                line_color="orange",
+                annotation_text=f"Spike Threshold ({spike_threshold:.1f})"
             )
-            fig.update_traces(line_color='#ff6b6b')
+            
+            fig.update_layout(
+                title="Daily Flagged Transactions with Spike Detection",
+                xaxis_title="Date",
+                yaxis_title="Transaction Count",
+                showlegend=True,
+                height=400
+            )
+            
             st.plotly_chart(fig, use_container_width=True)
+            
+            spike_days = daily_df[daily_df['is_spike']]
+            if len(spike_days) > 0:
+                st.warning(f"⚠️ {len(spike_days)} spike day(s) detected")
         else:
             st.info("Insufficient time series data")
     
     with col2:
-        st.subheader("💰 Amount Distribution")
+        st.write("**Top Accounts by Flagged Volume**")
         
-        if alerts_df['amount_usd'].max() > 0:
-            fig = px.histogram(
-                alerts_df, 
-                x='amount_usd',
-                nbins=20,
-                title="Distribution of Transaction Amounts (USD)",
-                color_discrete_sequence=['#ff8c42']
+        account_counts = alerts_df['account_id'].value_counts().head(10)
+        
+        if len(account_counts) > 0:
+            fig = px.bar(
+                y=account_counts.index,
+                x=account_counts.values,
+                orientation='h',
+                title="Accounts with Most Flagged Transactions",
+                color=account_counts.values,
+                color_continuous_scale='Blues',
+                labels={'x': 'Count', 'y': 'Account ID'}
             )
-            fig.update_layout(xaxis_title="Amount (USD)", yaxis_title="Count")
+            fig.update_layout(yaxis={'categoryorder': 'total ascending'}, showlegend=False, height=400)
             st.plotly_chart(fig, use_container_width=True)
         else:
-            st.info("No amount data available")
+            st.info("No account data available")
     
-    # 3. Suspicious keywords
-    st.subheader("🔍 Top Suspicious Keywords")
-    
-    if keywords_data:
-        keyword_counts = pd.Series(keywords_data).value_counts().head(10)
+    # Regional time series
+    if countries_data:
+        st.write("**Transaction Trends by Region**")
         
-        fig = px.bar(
-            x=keyword_counts.index,
-            y=keyword_counts.values,
-            title="Most Detected Suspicious Keywords",
-            color=keyword_counts.values,
-            color_continuous_scale='Oranges'
-        )
-        fig.update_layout(xaxis_title="Keywords", yaxis_title="Count")
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.info("No keyword data available from flagged transactions")
+        alerts_df_with_country = alerts_df.copy()
+        countries_list = []
+        
+        for idx, row in alerts_df_with_country.iterrows():
+            score_breakdown = row.get('score_breakdown', [])
+            if isinstance(score_breakdown, str):
+                try:
+                    score_breakdown = json.loads(score_breakdown)
+                except:
+                    score_breakdown = []
+            
+            country = 'Other'
+            for rule in score_breakdown:
+                if rule.get('rule_name') == 'BeneficiaryHighRisk':
+                    evidence = rule.get('evidence', '')
+                    if 'beneficiary_country=' in evidence:
+                        country = evidence.split('beneficiary_country=')[1].split(' ')[0]
+                        break
+            countries_list.append(country)
+        
+        alerts_df_with_country['country'] = countries_list
+        
+        top_countries = pd.Series(countries_list).value_counts().head(5).index.tolist()
+        
+        regional_time = alerts_df_with_country[alerts_df_with_country['country'].isin(top_countries)].groupby(
+            [alerts_df_with_country['transaction_date'].dt.date, 'country']
+        ).size().reset_index(name='count')
+        
+        if len(regional_time) > 0:
+            fig = px.line(
+                regional_time,
+                x='transaction_date',
+                y='count',
+                color='country',
+                title='Transaction Trends by Top 5 Countries',
+                labels={'transaction_date': 'Date', 'count': 'Transaction Count', 'country': 'Country'}
+            )
+            fig.update_layout(height=350)
+            st.plotly_chart(fig, use_container_width=True)
     
-    # 4. Structuring analysis
-    st.subheader("🔄 Structuring Analysis")
+    st.divider()
     
-    # Look for structuring patterns
-    structuring_count = 0
+    # 5. Structuring Pattern Chart
+    st.subheader("🔄 Structuring Pattern Analysis")
+    
+    structuring_data = []
     structuring_accounts = []
     
     for _, row in alerts_df.iterrows():
@@ -409,28 +601,73 @@ elif page == "📊 Dashboard":
         
         for rule in score_breakdown:
             if rule.get('rule_name') == 'Structuring':
-                structuring_count += 1
+                structuring_data.append({
+                    'account_id': row.get('account_id'),
+                    'transaction_date': row.get('transaction_date'),
+                    'amount_usd': row.get('amount_usd', 0),
+                    'transaction_id': row.get('transaction_id')
+                })
                 structuring_accounts.append(row.get('account_id'))
                 break
     
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.metric("Structuring Groups Detected", structuring_count)
+    if structuring_data:
+        structuring_df = pd.DataFrame(structuring_data)
+        structuring_df['transaction_date'] = pd.to_datetime(structuring_df['transaction_date'])
         
-        if structuring_accounts:
-            unique_accounts = len(set(structuring_accounts))
-            st.metric("Accounts Involved", unique_accounts)
-    
-    with col2:
-        if structuring_count > 0:
-            st.success(f"Found {structuring_count} potential structuring patterns")
-            if structuring_accounts:
-                st.write("Sample accounts with structuring:")
-                for acc in list(set(structuring_accounts))[:5]:
-                    st.write(f"• {acc}")
-        else:
-            st.info("No structuring patterns detected in recent data")
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            fig = px.scatter(
+                structuring_df,
+                x='transaction_date',
+                y='amount_usd',
+                color='account_id',
+                size='amount_usd',
+                title='Structuring Pattern: Transaction Amounts Over Time',
+                labels={
+                    'transaction_date': 'Date',
+                    'amount_usd': 'Amount (USD)',
+                    'account_id': 'Account'
+                },
+                hover_data=['transaction_id']
+            )
+            
+            fig.add_hline(
+                y=10000,
+                line_dash="dash",
+                line_color="red",
+                annotation_text="$10,000 Threshold"
+            )
+            
+            fig.update_layout(height=400)
+            st.plotly_chart(fig, use_container_width=True)
+        
+        with col2:
+            st.metric("Structuring Patterns Detected", len(structuring_data))
+            st.metric("Unique Accounts Involved", len(set(structuring_accounts)))
+            
+            account_struct_counts = pd.Series(structuring_accounts).value_counts()
+            
+            fig = px.bar(
+                y=account_struct_counts.index[:5],
+                x=account_struct_counts.values[:5],
+                orientation='h',
+                title="Top Accounts with Structuring",
+                color=account_struct_counts.values[:5],
+                color_continuous_scale='Reds',
+                labels={'x': 'Incidents', 'y': 'Account ID'}
+            )
+            fig.update_layout(yaxis={'categoryorder': 'total ascending'}, showlegend=False, height=300)
+            st.plotly_chart(fig, use_container_width=True)
+        
+        st.write("**Structuring Transactions Details:**")
+        display_struct_df = structuring_df[['transaction_id', 'account_id', 'transaction_date', 'amount_usd']].copy()
+        display_struct_df['transaction_date'] = display_struct_df['transaction_date'].dt.strftime('%Y-%m-%d %H:%M')
+        display_struct_df['amount_usd'] = display_struct_df['amount_usd'].apply(format_currency)
+        st.dataframe(display_struct_df, use_container_width=True)
+    else:
+        st.info("No structuring patterns detected in recent data")
+        st.write("Structuring typically involves breaking large transactions into smaller amounts to avoid reporting thresholds (e.g., multiple transactions just below $10,000).")
 
 elif page == "✍️ Manual Transaction Entry":
     st.title("✍️ Manual Transaction Entry")
