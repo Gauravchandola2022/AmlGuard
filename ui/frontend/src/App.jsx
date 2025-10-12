@@ -20,10 +20,10 @@ const App = () => {
           </div>
             <nav className="flex items-center space-x-6">
               <Link to="/Home" className="text-sm font-medium text-gray-600 hover:text-blue-600 transition duration-150">Home</Link>
-              <Link to="/Monitor" className="text-sm font-medium text-gray-600 hover:text-blue-600 transition duration-150">Create Transaction</Link>
-              <button className="bg-gradient-to-r from-blue-400 to-purple-500 text-white font-semibold py-2 px-5 rounded-full hover:from-blue-600 hover:to-purple-700 transition-all duration-300 shadow-md">
+              
+              {/* <button className="bg-gradient-to-r from-blue-400 to-purple-500 text-white font-semibold py-2 px-5 rounded-full hover:from-blue-600 hover:to-purple-700 transition-all duration-300 shadow-md">
                 Sign In
-              </button>
+              </button>  */}
             </nav>
           </div>
         </header>

@@ -200,11 +200,22 @@ const Home = () => {
 </div>
         </div> 
 
-        {/* Call to Action Section */} 
-        <section className="bg-slate-800 text-white py-16 text-center rounded-xl shadow-2xl mt-20 mb-10"> 
+         {/* Call to Action Section */}
+         {/* <section className="bg-slate-800 text-white py-16 text-center rounded-xl shadow-2xl mt-20 mb-10"> 
             <h2 className="text-4xl font-bold mb-6">Ready to see it in action?</h2> 
             <button className="bg-orange-600 hover:bg-orange-700 hover:scale-105 text-white font-bold py-3 px-10 rounded-lg text-lg shadow-xl transition duration-300"> Request AML-360 </button> 
-        </section>
+        </section>  */}
+        
+<section className="bg-slate-800 text-white py-16 text-center rounded-xl shadow-2xl mt-20 mb-10"> 
+    <h2 className="text-4xl font-bold mb-6">Ready to see it in action?</h2> 
+    <button
+        className="bg-orange-600 hover:bg-orange-700 hover:scale-105 text-white font-bold py-3 px-10 rounded-lg text-lg shadow-xl transition duration-300"
+        onClick={() => window.location.href = "https://52b980d3-8524-4948-be8a-a82a240f3ca3-00-x02dxa3u97ad.worf.replit.dev/"}
+    >
+        Request AML-360
+    </button> 
+</section>
+
 
         <footer className="text-gray-300 py-8 mb-[-120px]">
       <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center">
